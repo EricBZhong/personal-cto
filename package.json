@@ -1,0 +1,42 @@
+{
+  "name": "cto-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently --kill-others-on-fail --names next,server --prefix-colors blue,green \"next dev --port 3100\" \"tsx watch src/server/index.ts\"",
+    "predev": "node -e \"const{execSync}=require('child_process');try{const p=execSync('lsof -ti :3101').toString().trim();if(p){console.log('[cleanup] Killing stale server on :3101 (PID '+p+')');execSync('kill -9 '+p)}}catch{}\"",
+    "dev:next": "next dev --port 3100",
+    "dev:server": "tsx watch src/server/index.ts",
+    "build": "next build",
+    "start": "concurrently --names next,server \"next start --port 3100\" \"tsx src/server/index.ts\"",
+    "start:production": "tsx src/server/production.ts",
+    "lint": "eslint",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "concurrently": "^9.2.1",
+    "firebase-admin": "^13.7.0",
+    "next": "16.2.1",
+    "next-auth": "^5.0.0-beta.30",
+    "puppeteer": "^24.40.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "uuid": "^13.0.0",
+    "ws": "^8.20.0",
+    "zustand": "^5.0.12"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/uuid": "^10.0.0",
+    "@types/ws": "^8.18.1",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.1",
+    "tailwindcss": "^4",
+    "tsx": "^4.21.0",
+    "typescript": "^5",
+    "vitest": "^3.2.4"
+  }
+}

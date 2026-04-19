@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Real-World Example: Building a TikTok Revenue Machine with Your AI CTO</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #09090b;
+    --surface: #111114;
+    --surface2: #18181b;
+    --surface3: #1f1f23;
+    --border: #27272a;
+    --border-bright: #3f3f46;
+    --text: #fafafa;
+    --text-dim: #a1a1aa;
+    --text-muted: #71717a;
+    --accent: #6366f1;
+    --accent2: #8b5cf6;
+    --green: #22c55e;
+    --green-dim: #16a34a;
+    --orange: #f59e0b;
+    --red: #ef4444;
+    --blue: #3b82f6;
+    --cyan: #06b6d4;
+    --pink: #ec4899;
+    --tiktok: #fe2c55;
+    --tiktok-cyan: #25f4ee;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  code, .mono { font-family: 'JetBrains Mono', 'SF Mono', monospace; }
+
+  /* ========== SLIDE SYSTEM ========== */
+  .deck { width: 100vw; height: 100vh; position: relative; }
+
+  .slide {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 50px 70px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+    overflow-y: auto;
+  }
+  .slide.active { opacity: 1; pointer-events: auto; }
+
+  /* Nav */
+  .nav {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    z-index: 100;
+    background: rgba(17,17,20,0.92);
+    padding: 8px 16px;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    backdrop-filter: blur(12px);
+  }
+  .nav button {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 6px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+  }
+  .nav button:hover { background: var(--surface3); color: var(--text); }
+  .nav .counter { color: var(--text-muted); font-size: 12px; min-width: 60px; text-align: center; }
+  .nav .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--border-bright);
+    transition: all 0.3s;
+    cursor: pointer;
+  }
+  .nav .dot.active { background: var(--accent); transform: scale(1.4); }
+  .nav .dot:hover { background: var(--text-muted); }
+
+  /* ========== TYPOGRAPHY ========== */
+  .hero-title {
+    font-size: 56px;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -1.5px;
+    text-align: center;
+    max-width: 900px;
+  }
+  .hero-subtitle {
+    font-size: 20px;
+    color: var(--text-dim);
+    text-align: center;
+    max-width: 700px;
+    margin-top: 24px;
+    line-height: 1.6;
+  }
+  .slide-title {
+    font-size: 40px;
+    font-weight: 700;
+    letter-spacing: -1px;
+    margin-bottom: 12px;
+    text-align: center;
+  }
+  .slide-subtitle {
+    font-size: 17px;
+    color: var(--text-dim);
+    text-align: center;
+    max-width: 700px;
+    margin-bottom: 40px;
+    line-height: 1.5;
+  }
+  .section-label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--accent);
+    margin-bottom: 16px;
+  }
+
+  /* ========== CARDS ========== */
+  .card-grid {
+    display: grid;
+    gap: 20px;
+    width: 100%;
+    max-width: 1100px;
+  }
+  .card-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+  .card-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .card-grid.cols-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    transition: all 0.2s;
+  }
+  .card:hover { border-color: var(--border-bright); transform: translateY(-2px); }
+  .card h3 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .card p {
+    font-size: 14px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+  .card .icon {
+    font-size: 32px;
+    margin-bottom: 16px;
+    display: block;
+  }
+
+  /* Revenue card */
+  .revenue-card {
+    background: linear-gradient(135deg, var(--surface) 0%, rgba(99,102,241,0.08) 100%);
+    border-color: rgba(99,102,241,0.3);
+  }
+  .revenue-card .amount {
+    font-size: 36px;
+    font-weight: 800;
+    color: var(--green);
+    margin: 8px 0;
+  }
+  .revenue-card .label {
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
+  /* ========== CODE BLOCKS ========== */
+  .code-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    width: 100%;
+    max-width: 900px;
+    overflow-x: auto;
+    position: relative;
+  }
+  .code-block pre {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--text-dim);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .code-block .lang {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .code-block .copy-btn {
+    position: absolute;
+    top: 10px;
+    right: 70px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .code-block .copy-btn:hover { color: var(--text); background: var(--surface3); }
+
+  /* ========== PROMPT BOX ========== */
+  .prompt-box {
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    padding: 24px;
+    width: 100%;
+    max-width: 900px;
+    position: relative;
+  }
+  .prompt-box::before {
+    content: 'COPY-PASTE PROMPT';
+    position: absolute;
+    top: -10px;
+    left: 20px;
+    background: var(--bg);
+    padding: 0 8px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    color: var(--accent);
+  }
+  .prompt-box p {
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--text);
+  }
+  .prompt-box .copy-btn {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    background: var(--accent);
+    border: none;
+    color: white;
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .prompt-box .copy-btn:hover { opacity: 0.8; }
+
+  /* ========== TIMELINE ========== */
+  .timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    width: 100%;
+    max-width: 800px;
+  }
+  .timeline-item {
+    display: flex;
+    gap: 20px;
+    padding: 20px 0;
+    position: relative;
+  }
+  .timeline-item:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: 19px;
+    top: 56px;
+    bottom: 0;
+    width: 2px;
+    background: var(--border);
+  }
+  .timeline-dot {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 700;
+    background: var(--surface2);
+    border: 2px solid var(--border);
+    color: var(--text-dim);
+  }
+  .timeline-dot.active { border-color: var(--accent); color: var(--accent); background: rgba(99,102,241,0.1); }
+  .timeline-dot.done { border-color: var(--green); color: var(--green); background: rgba(34,197,94,0.1); }
+  .timeline-content h4 { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .timeline-content p { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
+
+  /* ========== PHASE CARDS ========== */
+  .phase-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    width: 100%;
+    max-width: 1000px;
+  }
+  .phase-card .phase-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .phase-card .phase-name {
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .phase-card .phase-status {
+    font-size: 12px;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-weight: 500;
+  }
+  .phase-card .phase-status.auto { background: rgba(34,197,94,0.15); color: var(--green); }
+  .phase-card .phase-status.review { background: rgba(245,158,11,0.15); color: var(--orange); }
+  .phase-card ul {
+    list-style: none;
+    margin-top: 8px;
+  }
+  .phase-card ul li {
+    font-size: 13px;
+    color: var(--text-dim);
+    padding: 4px 0;
+    padding-left: 20px;
+    position: relative;
+  }
+  .phase-card ul li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 11px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--border-bright);
+  }
+
+  /* ========== BADGE ========== */
+  .badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .badge-green { background: rgba(34,197,94,0.15); color: var(--green); }
+  .badge-orange { background: rgba(245,158,11,0.15); color: var(--orange); }
+  .badge-blue { background: rgba(59,130,246,0.15); color: var(--blue); }
+  .badge-pink { background: rgba(236,72,153,0.15); color: var(--pink); }
+  .badge-tiktok { background: rgba(254,44,85,0.15); color: var(--tiktok); }
+
+  /* ========== GRADIENT TEXT ========== */
+  .gradient-text {
+    background: linear-gradient(135deg, var(--tiktok-cyan), var(--tiktok));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .gradient-accent {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ========== ARCHITECTURE DIAGRAM ========== */
+  .arch-diagram {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    max-width: 1000px;
+  }
+  .arch-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    text-align: center;
+    min-width: 140px;
+  }
+  .arch-box .arch-icon { font-size: 24px; margin-bottom: 6px; }
+  .arch-box .arch-label { font-size: 13px; font-weight: 500; }
+  .arch-box .arch-sub { font-size: 11px; color: var(--text-muted); }
+  .arch-arrow {
+    font-size: 20px;
+    color: var(--text-muted);
+  }
+
+  /* ========== MONITORING GRID ========== */
+  .monitor-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    width: 100%;
+    max-width: 900px;
+  }
+  .monitor-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+  }
+  .monitor-card .metric {
+    font-size: 28px;
+    font-weight: 700;
+    margin: 4px 0;
+  }
+  .monitor-card .metric-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* Slide-specific layout */
+  .slide-left {
+    align-items: flex-start;
+    text-align: left;
+  }
+  .slide-left .slide-title,
+  .slide-left .slide-subtitle,
+  .slide-left .section-label {
+    text-align: left;
+  }
+  .content-scroll {
+    overflow-y: auto;
+    max-height: calc(100vh - 140px);
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    padding-bottom: 60px;
+  }
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+<!-- SLIDE 1: Hero -->
+<div class="slide active" data-slide="0">
+  <div class="section-label">REAL-WORLD REVENUE EXAMPLE</div>
+  <h1 class="hero-title">
+    Build a <span class="gradient-text">TikTok Content Machine</span><br>with Your AI CTO
+  </h1>
+  <p class="hero-subtitle">
+    A step-by-step guide to using the CTO Dashboard to build, deploy, and monetize
+    an automated TikTok content pipeline &mdash; from Reddit scraping to revenue.
+  </p>
+  <div style="display:flex; gap:12px; margin-top:32px;">
+    <span class="badge badge-tiktok">TikTok Automation</span>
+    <span class="badge badge-green">Revenue Generating</span>
+    <span class="badge badge-blue">Fully Autonomous</span>
+  </div>
+</div>
+
+<!-- SLIDE 2: Overview -->
+<div class="slide" data-slide="1">
+  <div class="section-label">OVERVIEW</div>
+  <h2 class="slide-title">What We're Building</h2>
+  <p class="slide-subtitle">
+    An automated viral content pipeline that sources trending content from Reddit, generates AI voiceovers,
+    creates videos, posts to TikTok, and tracks analytics &mdash; all running autonomously.
+  </p>
+  <div class="arch-diagram">
+    <div class="arch-box">
+      <div class="arch-icon">📡</div>
+      <div class="arch-label">Reddit Scraper</div>
+      <div class="arch-sub">Trending content</div>
+    </div>
+    <div class="arch-arrow">&rarr;</div>
+    <div class="arch-box">
+      <div class="arch-icon">✍️</div>
+      <div class="arch-label">Script Generator</div>
+      <div class="arch-sub">Claude AI</div>
+    </div>
+    <div class="arch-arrow">&rarr;</div>
+    <div class="arch-box">
+      <div class="arch-icon">🎙️</div>
+      <div class="arch-label">AI Voiceover</div>
+      <div class="arch-sub">ElevenLabs</div>
+    </div>
+    <div class="arch-arrow">&rarr;</div>
+    <div class="arch-box">
+      <div class="arch-icon">🎬</div>
+      <div class="arch-label">Video Assembly</div>
+      <div class="arch-sub">FFmpeg</div>
+    </div>
+    <div class="arch-arrow">&rarr;</div>
+    <div class="arch-box">
+      <div class="arch-icon">📱</div>
+      <div class="arch-label">TikTok Upload</div>
+      <div class="arch-sub">TikTok API</div>
+    </div>
+    <div class="arch-arrow">&rarr;</div>
+    <div class="arch-box">
+      <div class="arch-icon">📊</div>
+      <div class="arch-label">Analytics</div>
+      <div class="arch-sub">Revenue Dashboard</div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 3: Revenue Model -->
+<div class="slide" data-slide="2">
+  <div class="section-label">REVENUE MODEL</div>
+  <h2 class="slide-title">How This Generates Real Money</h2>
+  <p class="slide-subtitle">Multiple revenue streams from automated, faceless TikTok accounts at scale.</p>
+  <div class="card-grid cols-4">
+    <div class="card revenue-card">
+      <div class="label">TikTok Creator Fund</div>
+      <div class="amount">$500+</div>
+      <p>Per month per account with 100K+ followers. Revenue scales linearly with views.</p>
+    </div>
+    <div class="card revenue-card">
+      <div class="label">Affiliate Links</div>
+      <div class="amount">$2K+</div>
+      <p>Amazon, TikTok Shop commission on product recommendations placed in bio or comments.</p>
+    </div>
+    <div class="card revenue-card">
+      <div class="label">Sponsored Content</div>
+      <div class="amount">$5K+</div>
+      <p>Brand deals once accounts reach 50K+ followers. $50-500 per sponsored post.</p>
+    </div>
+    <div class="card revenue-card">
+      <div class="label">Scale Factor</div>
+      <div class="amount">10x</div>
+      <p>Run 10 accounts in different niches simultaneously. One engineer, zero human effort.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 4: Prerequisites -->
+<div class="slide" data-slide="3">
+  <div class="section-label">PREREQUISITES</div>
+  <h2 class="slide-title">What You Need Before Starting</h2>
+  <p class="slide-subtitle">API keys and accounts to configure before telling your CTO to start building.</p>
+  <div class="card-grid cols-2" style="max-width:800px;">
+    <div class="card">
+      <h3>📡 Reddit API</h3>
+      <p>Create a Reddit app at reddit.com/prefs/apps for trending content scraping. Free tier is sufficient.</p>
+      <div style="margin-top:12px;">
+        <code style="font-size:12px; color:var(--text-muted);">REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET</code>
+      </div>
+    </div>
+    <div class="card">
+      <h3>🎙️ ElevenLabs / PlayHT</h3>
+      <p>AI voice generation for narration. ElevenLabs Starter plan ($5/mo) gives 30K chars/month.</p>
+      <div style="margin-top:12px;">
+        <code style="font-size:12px; color:var(--text-muted);">ELEVENLABS_API_KEY</code>
+      </div>
+    </div>
+    <div class="card">
+      <h3>📱 TikTok Business API</h3>
+      <p>Apply for TikTok Developer access. Content Posting API for automated uploads.</p>
+      <div style="margin-top:12px;">
+        <code style="font-size:12px; color:var(--text-muted);">TIKTOK_CLIENT_KEY, TIKTOK_CLIENT_SECRET</code>
+      </div>
+    </div>
+    <div class="card">
+      <h3>🤖 Claude API (via CTO)</h3>
+      <p>Already configured in your CTO Dashboard. Used for script writing and content optimization.</p>
+      <div style="margin-top:12px;">
+        <code style="font-size:12px; color:var(--text-muted);">Handled by CTO Dashboard</code>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 5: Step 1 — Project Creation -->
+<div class="slide" data-slide="4">
+  <div class="section-label">STEP 1</div>
+  <h2 class="slide-title">Create the Project</h2>
+  <p class="slide-subtitle">Tell your CTO what you want to build. One message kicks off the entire project.</p>
+  <div class="prompt-box">
+    <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+    <p>I want to build a TikTok content automation webapp. Here's the vision:<br><br>
+
+<strong>Goal:</strong> Automated pipeline that scrapes trending Reddit content from specific subreddits, rewrites it as engaging short-form scripts using Claude, generates AI voiceover narration, assembles videos with stock footage overlays, and posts to TikTok on a schedule.<br><br>
+
+<strong>Tech stack:</strong> Next.js frontend with dashboard, Node.js backend, PostgreSQL for content tracking, Redis for job queues, FFmpeg for video processing.<br><br>
+
+<strong>Revenue streams:</strong> TikTok Creator Fund, affiliate links in bio, sponsored content slots.<br><br>
+
+<strong>Key features:</strong><br>
+1. Reddit scraper with subreddit targeting and virality scoring<br>
+2. AI script rewriter (Claude) that optimizes for short-form engagement<br>
+3. Voice generation via ElevenLabs API<br>
+4. Video assembly pipeline (FFmpeg + stock footage library)<br>
+5. TikTok upload scheduler with optimal posting time analysis<br>
+6. Analytics dashboard tracking views, revenue, and content performance<br>
+7. Multi-account support for running different niches simultaneously<br><br>
+
+Create this as a project with phases. Set autonomy to semi-autonomous so P2/P3 tasks auto-approve. Target the LeadGen repo or create a new one.</p>
+  </div>
+</div>
+
+<!-- SLIDE 6: Step 2 — Architecture -->
+<div class="slide" data-slide="5">
+  <div class="section-label">STEP 2</div>
+  <h2 class="slide-title">CTO Plans the Architecture</h2>
+  <p class="slide-subtitle">Your CTO analyzes the requirements, designs the system, and creates phased execution plan.</p>
+  <div class="content-scroll">
+    <div class="code-block">
+      <div class="lang">CTO Response</div>
+      <pre>
+I'll architect this as a modern full-stack app with these components:
+
+<strong style="color:var(--accent)">1. Content Ingestion Service</strong>
+   - Reddit API polling (configurable subreddits + keywords)
+   - Virality scoring: upvote velocity, comment ratio, cross-post detection
+   - Content deduplication via embeddings
+
+<strong style="color:var(--accent)">2. Script Generation Pipeline</strong>
+   - Claude rewrite engine with TikTok-optimized prompts
+   - Hook generation (first 3 seconds are critical)
+   - CTA injection for affiliate/engagement
+
+<strong style="color:var(--accent)">3. Media Production</strong>
+   - ElevenLabs TTS with voice profile management
+   - FFmpeg pipeline: subtitle burn-in, b-roll overlay, transitions
+   - Thumbnail generation for playlists
+
+<strong style="color:var(--accent)">4. Distribution Engine</strong>
+   - TikTok Content Posting API integration
+   - Optimal posting scheduler (ML-based time analysis)
+   - Multi-account rotation with rate limit management
+
+<strong style="color:var(--accent)">5. Analytics & Revenue Tracking</strong>
+   - TikTok Analytics API integration
+   - Revenue attribution per content piece
+   - A/B testing framework for scripts/voices/posting times
+
+Creating project with 6 phases. Setting semi-autonomous for P2/P3 auto-approval.
+      </pre>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 7: Step 3 — Phase-by-Phase Execution -->
+<div class="slide" data-slide="6">
+  <div class="section-label">STEP 3</div>
+  <h2 class="slide-title">Phase-by-Phase Execution</h2>
+  <p class="slide-subtitle">The CTO breaks the project into phases. Engineers execute each phase autonomously.</p>
+  <div class="content-scroll">
+    <div class="phase-card" style="margin-bottom:12px;">
+      <div class="phase-header">
+        <span class="phase-name">Phase 1: Foundation & Infrastructure</span>
+        <span class="phase-status auto">AUTO-APPROVED</span>
+      </div>
+      <ul>
+        <li>Initialize Next.js project with TypeScript, Tailwind, Prisma</li>
+        <li>Set up PostgreSQL schema (content, accounts, schedules, analytics)</li>
+        <li>Configure Redis + BullMQ job queue system</li>
+        <li>Set up Docker Compose for local development</li>
+        <li>Basic auth and multi-account management UI</li>
+      </ul>
+    </div>
+    <div class="phase-card" style="margin-bottom:12px;">
+      <div class="phase-header">
+        <span class="phase-name">Phase 2: Content Ingestion</span>
+        <span class="phase-status auto">AUTO-APPROVED</span>
+      </div>
+      <ul>
+        <li>Reddit API client with OAuth2 authentication</li>
+        <li>Subreddit monitoring with configurable polling intervals</li>
+        <li>Virality scoring algorithm (upvotes/hour, comment engagement ratio)</li>
+        <li>Content deduplication and storage pipeline</li>
+        <li>Admin UI for managing subreddit lists and thresholds</li>
+      </ul>
+    </div>
+    <div class="phase-card" style="margin-bottom:12px;">
+      <div class="phase-header">
+        <span class="phase-name">Phase 3: AI Script Generation</span>
+        <span class="phase-status auto">AUTO-APPROVED</span>
+      </div>
+      <ul>
+        <li>Claude integration for content rewriting</li>
+        <li>TikTok-optimized prompt templates (hook + body + CTA)</li>
+        <li>Script variation generation for A/B testing</li>
+        <li>Content moderation filters and brand safety checks</li>
+      </ul>
+    </div>
+    <div class="phase-card" style="margin-bottom:12px;">
+      <div class="phase-header">
+        <span class="phase-name">Phase 4: Media Production Pipeline</span>
+        <span class="phase-status review">NEEDS REVIEW</span>
+      </div>
+      <ul>
+        <li>ElevenLabs TTS integration with voice selection</li>
+        <li>FFmpeg video assembly (subtitles, b-roll, transitions, music)</li>
+        <li>Stock footage library integration (Pexels/Pixabay API)</li>
+        <li>Video quality validation and format optimization</li>
+      </ul>
+    </div>
+    <div class="phase-card" style="margin-bottom:12px;">
+      <div class="phase-header">
+        <span class="phase-name">Phase 5: TikTok Distribution</span>
+        <span class="phase-status review">NEEDS REVIEW</span>
+      </div>
+      <ul>
+        <li>TikTok Content Posting API integration</li>
+        <li>Scheduling engine with optimal posting time ML model</li>
+        <li>Multi-account rotation and rate limit management</li>
+        <li>Hashtag optimization and trend detection</li>
+      </ul>
+    </div>
+    <div class="phase-card">
+      <div class="phase-header">
+        <span class="phase-name">Phase 6: Analytics & Revenue</span>
+        <span class="phase-status auto">AUTO-APPROVED</span>
+      </div>
+      <ul>
+        <li>TikTok Analytics API for view/engagement tracking</li>
+        <li>Revenue dashboard with per-content attribution</li>
+        <li>A/B test results visualization</li>
+        <li>Automated content strategy optimization based on performance data</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 8: Step 4 — Autonomous Mode -->
+<div class="slide" data-slide="7">
+  <div class="section-label">STEP 4</div>
+  <h2 class="slide-title">Set Autonomous Mode & Let It Run</h2>
+  <p class="slide-subtitle">Configure autonomy level and let engineers work overnight while you sleep.</p>
+  <div class="prompt-box" style="margin-bottom:24px;">
+    <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+    <p>Set the TikTok Content Machine project to autonomous mode for the next 8 hours. Auto-approve all tasks P1 and below. Pause on 2 consecutive failures. Notify me on Slack when each phase completes.</p>
+  </div>
+  <div class="card-grid cols-3" style="max-width:900px;">
+    <div class="card" style="text-align:center;">
+      <div class="icon">🤖</div>
+      <h3>Autonomous</h3>
+      <p>All tasks auto-approved and auto-merged. Engineers work without human intervention.</p>
+    </div>
+    <div class="card" style="text-align:center;">
+      <div class="icon">⏰</div>
+      <h3>Time-Bounded</h3>
+      <p>Autonomy expires after 8 hours. Reverts to supervised mode automatically.</p>
+    </div>
+    <div class="card" style="text-align:center;">
+      <div class="icon">🛡️</div>
+      <h3>Safety Rails</h3>
+      <p>Pauses on 2 consecutive failures. P0 tasks always require human approval.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 9: Step 5 — Monitoring -->
+<div class="slide" data-slide="8">
+  <div class="section-label">STEP 5</div>
+  <h2 class="slide-title">Monitor Progress in Real-Time</h2>
+  <p class="slide-subtitle">Use the dashboard to track tasks, review PRs, and monitor engineer output as they build.</p>
+  <div class="monitor-grid">
+    <div class="monitor-card">
+      <div class="metric-label">Active Engineers</div>
+      <div class="metric" style="color:var(--green);">4</div>
+      <p style="font-size:12px; color:var(--text-muted);">Working in parallel on Phase 2 tasks</p>
+    </div>
+    <div class="monitor-card">
+      <div class="metric-label">Tasks Completed</div>
+      <div class="metric" style="color:var(--blue);">12/28</div>
+      <p style="font-size:12px; color:var(--text-muted);">Phase 1 done, Phase 2 in progress</p>
+    </div>
+    <div class="monitor-card">
+      <div class="metric-label">PRs Merged</div>
+      <div class="metric" style="color:var(--accent);">9</div>
+      <p style="font-size:12px; color:var(--text-muted);">AI-verified and auto-merged</p>
+    </div>
+    <div class="monitor-card">
+      <div class="metric-label">Tokens Used</div>
+      <div class="metric" style="color:var(--orange);">1.2M</div>
+      <p style="font-size:12px; color:var(--text-muted);">~$4.80 total cost so far</p>
+    </div>
+    <div class="monitor-card">
+      <div class="metric-label">Build Time</div>
+      <div class="metric" style="color:var(--cyan);">6.5h</div>
+      <p style="font-size:12px; color:var(--text-muted);">Estimated 14h total for all phases</p>
+    </div>
+    <div class="monitor-card">
+      <div class="metric-label">Failure Rate</div>
+      <div class="metric" style="color:var(--green);">8%</div>
+      <p style="font-size:12px; color:var(--text-muted);">1 retry needed, auto-resolved</p>
+    </div>
+  </div>
+  <p style="margin-top:24px; font-size:13px; color:var(--text-muted); text-align:center;">
+    Dashboard pages: <span class="badge badge-blue">Tasks</span>
+    <span class="badge badge-green">Engineers</span>
+    <span class="badge badge-orange">PR Reviews</span>
+    <span class="badge badge-pink">Projects</span>
+    to track every detail
+  </p>
+</div>
+
+<!-- SLIDE 10: Step 6 — Revenue Optimization -->
+<div class="slide" data-slide="9">
+  <div class="section-label">STEP 6</div>
+  <h2 class="slide-title">Optimize for Revenue</h2>
+  <p class="slide-subtitle">Once deployed, use the CTO to iterate on content strategy based on performance data.</p>
+  <div class="prompt-box" style="margin-bottom:24px;">
+    <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+    <p>Analyze the last 30 days of TikTok analytics for our content accounts. Which subreddits generate the highest-performing content? What posting times get the most views? Create tasks to: 1) Update the virality scoring algorithm based on actual performance data, 2) Add the top 3 new trending subreddits, 3) Optimize the script template for our best-performing content format.</p>
+  </div>
+  <div class="card-grid cols-3" style="max-width:900px;">
+    <div class="card" style="text-align:center;">
+      <div class="icon">📈</div>
+      <h3>Data-Driven Iteration</h3>
+      <p>CTO analyzes real performance data and suggests improvements to the content pipeline.</p>
+    </div>
+    <div class="card" style="text-align:center;">
+      <div class="icon">🔄</div>
+      <h3>Continuous Optimization</h3>
+      <p>Weekly optimization cycle: analyze metrics, create tasks, deploy improvements automatically.</p>
+    </div>
+    <div class="card" style="text-align:center;">
+      <div class="icon">💰</div>
+      <h3>Revenue Growth</h3>
+      <p>Each iteration improves content quality, posting strategy, and revenue per view.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 11: Example Prompts -->
+<div class="slide" data-slide="10">
+  <div class="section-label">REFERENCE</div>
+  <h2 class="slide-title">Copy-Paste Prompts for Every Stage</h2>
+  <p class="slide-subtitle">Use these exact prompts in the CTO chat to control the project lifecycle.</p>
+  <div class="content-scroll">
+    <div class="prompt-box" style="margin-bottom:16px;">
+      <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+      <p><strong>Check project status:</strong><br>
+      Give me a status update on the TikTok Content Machine project. What phase are we in? How many tasks are left? Any blockers?</p>
+    </div>
+    <div class="prompt-box" style="margin-bottom:16px;">
+      <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+      <p><strong>Add a new feature:</strong><br>
+      Add Instagram Reels cross-posting to the TikTok Content Machine. Reuse the same video pipeline but add Instagram Graph API integration for uploading. Create tasks for this in the current project.</p>
+    </div>
+    <div class="prompt-box" style="margin-bottom:16px;">
+      <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+      <p><strong>Fix a production issue:</strong><br>
+      The TikTok upload is failing with a rate limit error for our fitness account. Create a P0 task to add exponential backoff retry logic and per-account rate limit tracking to the upload service.</p>
+    </div>
+    <div class="prompt-box" style="margin-bottom:16px;">
+      <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+      <p><strong>Scale to new niches:</strong><br>
+      I want to launch 3 new TikTok accounts targeting: 1) Personal finance tips, 2) AI/tech news, 3) Cooking life hacks. For each, set up new subreddit sources, create voice profiles, and configure posting schedules. Use the existing infrastructure.</p>
+    </div>
+    <div class="prompt-box">
+      <button class="copy-btn" onclick="copyPrompt(this)">Copy</button>
+      <p><strong>Deploy to production:</strong><br>
+      The TikTok Content Machine is ready for production. Deploy to Cloud Run with the following config: 2 instances min, 10 max, 2GB memory, connect to our production PostgreSQL and Redis instances. Run the deployment and verify the health check passes.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 12: Summary -->
+<div class="slide" data-slide="11">
+  <div class="section-label">THE BOTTOM LINE</div>
+  <h1 class="hero-title">
+    One Conversation.<br>
+    <span class="gradient-accent">A Complete Revenue Machine.</span>
+  </h1>
+  <p class="hero-subtitle">
+    From idea to deployed, revenue-generating TikTok automation in under 24 hours.
+    No hiring. No sprints. No standups. Just your AI CTO and an army of engineer agents.
+  </p>
+  <div class="card-grid cols-4" style="margin-top:32px; max-width:900px;">
+    <div class="card" style="text-align:center; padding:20px;">
+      <div style="font-size:28px; font-weight:800; color:var(--green);">24h</div>
+      <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">Idea to Deploy</div>
+    </div>
+    <div class="card" style="text-align:center; padding:20px;">
+      <div style="font-size:28px; font-weight:800; color:var(--blue);">28</div>
+      <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">Tasks Auto-Completed</div>
+    </div>
+    <div class="card" style="text-align:center; padding:20px;">
+      <div style="font-size:28px; font-weight:800; color:var(--orange);">~$15</div>
+      <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">Total API Cost</div>
+    </div>
+    <div class="card" style="text-align:center; padding:20px;">
+      <div style="font-size:28px; font-weight:800; color:var(--tiktok);">$7K+</div>
+      <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">Monthly Revenue Potential</div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /deck -->
+
+<!-- Navigation -->
+<div class="nav" id="nav">
+  <button onclick="prev()">&#8592; Prev</button>
+  <div id="dots" style="display:flex; gap:6px;"></div>
+  <span class="counter" id="counter">1 / 12</span>
+  <button onclick="next()">Next &#8594;</button>
+</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  let current = 0;
+  const total = slides.length;
+
+  // Build dots
+  const dotsContainer = document.getElementById('dots');
+  for (let i = 0; i < total; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'dot' + (i === 0 ? ' active' : '');
+    dot.onclick = () => goTo(i);
+    dotsContainer.appendChild(dot);
+  }
+
+  function goTo(n) {
+    slides[current].classList.remove('active');
+    dotsContainer.children[current].classList.remove('active');
+    current = Math.max(0, Math.min(n, total - 1));
+    slides[current].classList.add('active');
+    dotsContainer.children[current].classList.add('active');
+    document.getElementById('counter').textContent = `${current + 1} / ${total}`;
+  }
+
+  function next() { goTo(current + 1); }
+  function prev() { goTo(current - 1); }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); next(); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); prev(); }
+  });
+
+  // Touch support
+  let touchStartX = 0;
+  document.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
+  document.addEventListener('touchend', (e) => {
+    const diff = touchStartX - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 60) { diff > 0 ? next() : prev(); }
+  });
+
+  // Copy prompt functionality
+  function copyPrompt(btn) {
+    const box = btn.closest('.prompt-box');
+    const text = box.querySelector('p').innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+    });
+  }
+</script>
+
+</body>
+</html>

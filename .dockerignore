@@ -1,0 +1,8 @@
+node_modules
+.next
+.git
+*.md
+.env*
+data/cto-dashboard.db
+data/dogfood-screenshots
+.claude

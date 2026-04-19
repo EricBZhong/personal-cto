@@ -1,0 +1,222 @@
+name: Deploy CTO Dashboard
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  PROJECT_ID: YOUR_GCP_PROJECT
+  REGION: us-central1
+  SERVICE_NAME: cto-dashboard
+  WORKLOAD_IDENTITY_PROVIDER: projects/${{ secrets.GCP_PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github-actions/providers/github
+  SERVICE_ACCOUNT: cto-dashboard-sa@YOUR_GCP_PROJECT.iam.gserviceaccount.com
+
+jobs:
+  build:
+    name: Build & Push Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    outputs:
+      image_tag: ${{ steps.meta.outputs.image_tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker us-docker.pkg.dev --quiet
+
+      - name: Set image tag
+        id: meta
+        run: |
+          IMAGE_TAG="us-docker.pkg.dev/${{ env.PROJECT_ID }}/cto-dashboard/${{ env.SERVICE_NAME }}:${{ github.sha }}"
+          echo "image_tag=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Build Docker image
+        run: docker build -t ${{ steps.meta.outputs.image_tag }} .
+
+      - name: Push Docker image
+        run: docker push ${{ steps.meta.outputs.image_tag }}
+
+  smoke-test:
+    name: Smoke Test
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker us-docker.pkg.dev --quiet
+
+      - name: Pull built image
+        run: docker pull ${{ needs.build.outputs.image_tag }}
+
+      - name: Start container
+        run: |
+          docker run -d --name smoke \
+            -p 8080:8080 \
+            -e PORT=8080 \
+            -e NODE_ENV=production \
+            -e NEXTAUTH_SECRET=smoke-test-secret \
+            -e GOOGLE_CLIENT_ID=fake \
+            -e GOOGLE_CLIENT_SECRET=fake \
+            ${{ needs.build.outputs.image_tag }}
+          # Wait for container to start
+          for i in $(seq 1 30); do
+            if curl -s http://localhost:8080/health > /dev/null 2>&1; then
+              echo "Container ready after ${i}s"
+              break
+            fi
+            if [ "$i" = "30" ]; then
+              echo "Container failed to start"
+              docker logs smoke
+              exit 1
+            fi
+            sleep 1
+          done
+
+      - name: Verify health endpoint
+        run: |
+          HEALTH=$(curl -sf http://localhost:8080/health)
+          echo "Health: $HEALTH"
+          echo "$HEALTH" | grep -q '"status":"ok"' || (echo "FAIL: Health check missing status:ok" && exit 1)
+
+      - name: Verify frontend serves HTML (not fallback)
+        run: |
+          # Follow redirects (auth may redirect / to /login)
+          BODY=$(curl -sfL http://localhost:8080/ || true)
+          if echo "$BODY" | grep -q "frontend not available"; then
+            echo "FAIL: Frontend returned fallback text"
+            docker logs smoke
+            exit 1
+          fi
+          if echo "$BODY" | grep -qi "<html\|<!doctype\|__next\|Sign in"; then
+            echo "PASS: Frontend serves HTML"
+          else
+            echo "FAIL: Frontend response doesn't look like HTML"
+            echo "$BODY" | head -20
+            docker logs smoke
+            exit 1
+          fi
+
+      - name: Verify Claude CLI is installed
+        run: |
+          docker exec smoke claude --version || (echo "FAIL: Claude CLI not found" && exit 1)
+
+      - name: Dump logs on failure
+        if: failure()
+        run: docker logs smoke 2>&1 | tail -100
+
+      - name: Cleanup
+        if: always()
+        run: docker rm -f smoke 2>/dev/null || true
+
+  deploy:
+    name: Deploy to Cloud Run
+    needs: [build, smoke-test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy ${{ env.SERVICE_NAME }} \
+            --image ${{ needs.build.outputs.image_tag }} \
+            --region ${{ env.REGION }} \
+            --project ${{ env.PROJECT_ID }} \
+            --service-account=${{ env.SERVICE_ACCOUNT }} \
+            --memory 4Gi \
+            --cpu 2 \
+            --min-instances 1 \
+            --max-instances 5 \
+            --timeout 900 \
+            --concurrency 50 \
+            --no-cpu-throttling \
+            --session-affinity \
+            --set-env-vars "NODE_ENV=production" \
+            --set-secrets "CLAUDE_OAUTH_TOKEN=claude-oauth-token:latest,NOTION_API_KEY=notion-api-key:latest,SLACK_BOT_TOKEN=slack-bot-token:latest,SLACK_APP_TOKEN=slack-app-token:latest,SLACK_SIGNING_SECRET=slack-signing-secret:latest,GH_TOKEN=github-token:latest,GOOGLE_CLIENT_ID=google-client-id:latest,GOOGLE_CLIENT_SECRET=google-client-secret:latest,NEXTAUTH_SECRET=nextauth-secret:latest,FIREBASE_SERVICE_ACCOUNT_JSON=firebase-service-account:latest,VANTA_CLIENT_ID=vanta-client-id:latest,VANTA_CLIENT_SECRET=vanta-client-secret:latest,SF_USERNAME=sf-username:latest,SF_PASSWORD=sf-password:latest" \
+            --ingress=all \
+            --platform managed \
+            --allow-unauthenticated
+
+      - name: Set AUTH_URL from service URL
+        run: |
+          SERVICE_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
+            --region ${{ env.REGION }} \
+            --project ${{ env.PROJECT_ID }} \
+            --format 'value(status.url)')
+          echo "Setting AUTH_URL=${SERVICE_URL}"
+          gcloud run services update ${{ env.SERVICE_NAME }} \
+            --region ${{ env.REGION }} \
+            --project ${{ env.PROJECT_ID }} \
+            --set-env-vars "NODE_ENV=production,AUTH_URL=${SERVICE_URL}"
+
+  post-deploy:
+    name: Health Check
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Health check
+        run: |
+          SERVICE_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
+            --region ${{ env.REGION }} \
+            --project ${{ env.PROJECT_ID }} \
+            --format 'value(status.url)')
+          echo "Service URL: ${SERVICE_URL}"
+          curl --fail --retry 5 --retry-delay 10 "${SERVICE_URL}/health"
+
+      - name: Route 100% traffic to latest
+        run: |
+          gcloud run services update-traffic ${{ env.SERVICE_NAME }} \
+            --region ${{ env.REGION }} \
+            --project ${{ env.PROJECT_ID }} \
+            --to-latest
